@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Custom InfoWindow with Street View</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+      }
+      #map {
+        height: 100%;
+        width: 100%;
+      }
+      #street-view {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 33%;
+        z-index: 1;
+      }
+      .gm-style-iw-d {
+        opacity: 0.5 !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div id="street-view"></div>
+
+    <script>
+      let map, marker, panorama;
+      const geocoder = new google.maps.Geocoder();
+
+      function initMap() {
+        map = new google.maps.Map(document.getElementById("map"), {
+          center: { lat: 13.7563, lng: 100.5018 },
+          zoom: 14,
+        });
+
+        panorama = new google.maps.StreetViewPanorama(
+          document.getElementById("street-view"),
+          {
+            position: map.getCenter(),
+            pov: { heading: 165, pitch: 0 },
+            visible: false,
+          }
+        );
+
+        map.addListener("click", (e) => {
+          const lat = e.latLng.lat();
+          const lng = e.latLng.lng();
+          placeMarkerAndCopy(lat, lng);
+        });
+      }
+
+      function placeMarkerAndCopy(lat, lng) {
+        const url = `https://www.google.com/maps?q=${lat},${lng}`;
+        if (marker) marker.setMap(null);
+
+        marker = new google.maps.Marker({
+          position: { lat, lng },
+          map,
+        });
+
+        navigator.clipboard.writeText(url).then(() => alert("คัดลอกลิงก์แล้ว"));
+
+        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+          if (status === "OK" && results[0]) {
+            const placeName = results[0].address_components[0].long_name || "สถานที่";
+            const address = results[0].formatted_address;
+
+            const contentString = `
+              <div style="display: flex; align-items: center; font-size: 13px;">
+                <img src="https://maps.gstatic.com/mapfiles/place_api/icons/v1/png_71/geocode-71.png" 
+                     style="width: 40px; height: 40px; margin-right: 8px;" />
+                <div>
+                  <strong>${placeName}</strong><br/>
+                  ${address}<br/>
+                  <a href="${url}" target="_blank">${lat.toFixed(6)}, ${lng.toFixed(6)}</a><br/>
+                  <button onclick="navigator.clipboard.writeText('${url}').then(() => alert('คัดลอกลิงก์แล้ว'))">
+                    🔗 คัดลอก
+                  </button>
+                </div>
+              </div>
+            `;
+
+            const infowindow = new google.maps.InfoWindow({
+              content: contentString,
+            });
+
+            infowindow.open(map, marker);
+          }
+        });
+
+        panorama.setPosition({ lat, lng });
+        panorama.setVisible(true);
+      }
+    </script>
+    <script async
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC4h02XblNyEBG1tszHsGVLY0-dTTeiVMk&callback=initMap">
+    </script>
+  </body>
+</html>
